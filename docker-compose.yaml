@@ -1,0 +1,15 @@
+services:
+    postgres:
+        image: postgres:18.1-alpine
+        container_name: code_engine_db
+        restart: always
+        ports:
+            - '5432:5432'
+        volumes:
+            - code_engine_data:/var/lib/postgresql
+        environment:
+            POSTGRES_USER: code_engine
+            POSTGRES_PASSWORD: code_engine_password
+            POSTGRES_DB: code_engine
+volumes:
+    code_engine_data:

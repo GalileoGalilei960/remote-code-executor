@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum task_difficulties {
+  Easy
+  Medium
+  Hard
+}
+
+enum languages {
+  JavaScript
+  TypeScript
+  Python
+  C
+  Cpp
+  Ruby
+  Java
+  Csh
+}
+
+enum status_codes {
+  PENDING
+  ACCEPTED
+  WRONG_ANSWER
+  RUNTIME_ERROR
+  TIME_LIMIT_EXCEEDED
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  username    String       @unique
+  email       String       @unique
+  password    String
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime?    @updatedAt @map("updated_at")
+  submissions Submission[]
+
+  @@map("users")
+}
+
+model Task {
+  id          Int               @id @default(autoincrement())
+  title       String
+  description String
+  difficulty  task_difficulties
+  isPublished Boolean           @map("is_published")
+  memoryLimit Float             @map("memory_limit")
+  timeLimit   Float             @default(10) @map("time_limit")
+  testCase    TestCase[]
+  submissions Submission[]
+
+  @@map("tasks")
+}
+
+model Submission {
+  id           Int          @id @default(autoincrement())
+  code         String
+  time         Decimal?
+  status       status_codes
+  language     languages
+  errorMessage String?      @map("error_message")
+  memoryUsed   Float?       @map("memory_used")
+  createdAt    DateTime     @map("created_at")
+  userId       Int          @map("user_id")
+  user         User         @relation(fields: [userId], references: [id])
+  taskId       Int          @map("task_id")
+  task         Task         @relation(fields: [taskId], references: [id])
+}
+
+model TestCase {
+  id             Int     @id @default(autoincrement())
+  input          Json
+  expectedOutput Json    @map("expected_output")
+  isSample       Boolean @map("is_sample")
+  taskId         Int     @map("task_id")
+  task           Task    @relation(fields: [taskId], references: [id])
+
+  @@map("test_cases")
+}
