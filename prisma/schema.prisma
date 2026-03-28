@@ -24,10 +24,10 @@ enum languages {
   TypeScript
   Python
   C
-  Cpp
+  CPP        @map("C++")
   Ruby
   Java
-  Csh
+  CSHARP     @map("C#")
 }
 
 enum status_codes {
@@ -56,9 +56,10 @@ model Task {
   description String
   difficulty  task_difficulties
   isPublished Boolean           @map("is_published")
-  memoryLimit Float             @map("memory_limit")
+  memoryLimit Int               @map("memory_limit")
   timeLimit   Float             @default(10) @map("time_limit")
-  testCase    TestCase[]
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime?         @updatedAt
   submissions Submission[]
 
   @@map("tasks")
@@ -71,12 +72,15 @@ model Submission {
   status       status_codes
   language     languages
   errorMessage String?      @map("error_message")
-  memoryUsed   Float?       @map("memory_used")
-  createdAt    DateTime     @map("created_at")
+  memoryUsed   Int?         @map("memory_used")
+  createdAt    DateTime     @default(now()) @map("created_at")
   userId       Int          @map("user_id")
-  user         User         @relation(fields: [userId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   taskId       Int          @map("task_id")
-  task         Task         @relation(fields: [taskId], references: [id])
+  task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taskId])
+  @@map("submissions")
 }
 
 model TestCase {
@@ -85,7 +89,6 @@ model TestCase {
   expectedOutput Json    @map("expected_output")
   isSample       Boolean @map("is_sample")
   taskId         Int     @map("task_id")
-  task           Task    @relation(fields: [taskId], references: [id])
 
   @@map("test_cases")
 }

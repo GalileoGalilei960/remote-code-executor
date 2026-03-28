@@ -1,0 +1,45 @@
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+
+@Injectable()
+export class UsersService {
+    constructor(private prisma: PrismaService) {}
+    async create(
+        createUserDto: CreateUserDto /*TODO: create separate dto where password is like 20 chars and dto checks if it is correctly hashed*/,
+    ) {
+        const { username, email, password } = createUserDto;
+        const user = await this.prisma.user.create({
+            data: { username, email, password },
+        });
+
+        return user;
+    }
+
+    findAll() {
+        return this.prisma.user.findMany({
+            where: {},
+            omit: { password: true },
+        });
+    }
+
+    findOne(id: number) {
+        return this.prisma.user.findUnique({ where: { id } });
+    }
+
+    update(id: number, updateUserDto: UpdateUserDto) {
+        return this.prisma.user.update({
+            data: updateUserDto,
+            where: { id },
+            omit: { password: true },
+        });
+    }
+
+    remove(id: number) {
+        return this.prisma.user.delete({
+            where: { id },
+            omit: { password: true },
+        });
+    }
+}
