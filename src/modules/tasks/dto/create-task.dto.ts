@@ -1,4 +1,4 @@
-import { IsEnum, IsString, ValidateNested } from 'class-validator';
+import { IsEnum, IsNumber, IsString, ValidateNested } from 'class-validator';
 import { task_difficulties } from 'generated/prisma/enums';
 import { CreateTestCaseDto } from './create-testCase.dto';
 import { Type } from 'class-transformer';
@@ -16,4 +16,10 @@ export class CreateTaskDto {
     @ValidateNested({ each: true })
     @Type(() => CreateTestCaseDto)
     testCases: CreateTestCaseDto[];
+
+    @IsNumber()
+    timeLimit: number;
+
+    @IsNumber()
+    memoryLimit: number;
 }
