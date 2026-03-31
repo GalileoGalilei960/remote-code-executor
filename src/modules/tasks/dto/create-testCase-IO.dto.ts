@@ -19,6 +19,7 @@ export class CreateTestCaseIODto {
     @IsEnum(ParamTypes)
     type: ParamTypes;
 
+    @IsString()
     @IsTypeMatch()
     value: string;
 }
