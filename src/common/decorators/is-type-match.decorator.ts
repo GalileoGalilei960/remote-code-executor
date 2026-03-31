@@ -5,7 +5,7 @@ import {
     ValidatorConstraint,
     ValidatorConstraintInterface,
 } from 'class-validator';
-import { CreateTestCaseIODto } from 'src/modules/tasks/dto/create-testCase-IO.dto';
+import { CreateTestCaseIODto } from 'src/modules/test-cases/dto/create-test-case-IO.dto';
 import * as z from 'zod';
 
 export const typeMatchMap = {

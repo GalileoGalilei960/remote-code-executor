@@ -12,7 +12,7 @@ import {
     ValidateNested,
 } from 'class-validator';
 import { task_difficulties } from 'generated/prisma/enums';
-import { CreateTestCaseDto } from './create-testCase.dto';
+import { CreateTestCaseDto } from '../../test-cases/dto/create-test-case.dto';
 import { Type } from 'class-transformer';
 
 export class CreateTaskDto {
