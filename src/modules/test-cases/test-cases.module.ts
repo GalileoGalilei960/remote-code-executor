@@ -7,5 +7,6 @@ import { TestCasesController } from './test-cases.controller';
     imports: [PrismaModule],
     providers: [TestCasesService],
     controllers: [TestCasesController],
+    exports: [TestCasesService],
 })
 export class TestCasesModule {}

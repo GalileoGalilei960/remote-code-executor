@@ -23,6 +23,10 @@ export class TestCasesService {
         return this.prisma.testCase.findMany({ where: {} });
     }
 
+    findAllForTask(taskId: number) {
+        return this.prisma.testCase.findMany({ where: { taskId } });
+    }
+
     findOne(id: number) {
         return this.prisma.testCase.findUnique({ where: { id } });
     }
