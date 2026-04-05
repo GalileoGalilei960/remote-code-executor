@@ -2,7 +2,7 @@
 CREATE TYPE "task_difficulties" AS ENUM ('Easy', 'Medium', 'Hard');
 
 -- CreateEnum
-CREATE TYPE "languages" AS ENUM ('JavaScript', 'TypeScript', 'Python', 'C', 'Cpp', 'Ruby', 'Java', 'Csh');
+CREATE TYPE "languages" AS ENUM ('JavaScript', 'TypeScript', 'Python', 'C', 'C++', 'Ruby', 'Java', 'C#');
 
 -- CreateEnum
 CREATE TYPE "status_codes" AS ENUM ('PENDING', 'ACCEPTED', 'WRONG_ANSWER', 'RUNTIME_ERROR', 'TIME_LIMIT_EXCEEDED');

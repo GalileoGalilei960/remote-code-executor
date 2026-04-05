@@ -9,7 +9,7 @@
 -- AlterEnum
 BEGIN;
 CREATE TYPE "languages_new" AS ENUM ('JavaScript', 'TypeScript', 'Python', 'C', 'C++', 'Ruby', 'Java', 'C#');
-ALTER TABLE "submissions" ALTER COLUMN "language" TYPE "languages_new" USING ("language"::text::"languages_new");
+ALTER TABLE "Submission" ALTER COLUMN "language" TYPE "languages_new" USING ("language"::text::"languages_new");
 ALTER TYPE "languages" RENAME TO "languages_old";
 ALTER TYPE "languages_new" RENAME TO "languages";
 DROP TYPE "public"."languages_old";
@@ -39,6 +39,7 @@ CREATE TABLE "submissions" (
     "time" DECIMAL(65,30),
     "status" "status_codes" NOT NULL,
     "language" "languages" NOT NULL,
+    "result" JSONB NOT NULL,
     "error_message" TEXT,
     "memory_used" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

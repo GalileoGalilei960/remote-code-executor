@@ -72,6 +72,7 @@ model Submission {
   time         Decimal?
   status       status_codes
   language     languages
+  result       Json?
   errorMessage String?      @map("error_message")
   memoryUsed   Int?         @map("memory_used")
   createdAt    DateTime     @default(now()) @map("created_at")
