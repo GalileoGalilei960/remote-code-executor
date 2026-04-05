@@ -17,31 +17,31 @@ import { Type } from 'class-transformer';
 
 export class CreateTaskDto {
     @IsString()
-    title: string;
+    title!: string;
 
     @IsString()
-    description: string;
+    description!: string;
 
     @IsEnum(task_difficulties)
-    difficulty: task_difficulties;
+    difficulty!: task_difficulties;
 
     @IsArray()
     @ArrayMinSize(1, { message: 'Task must have at least one test case' })
     @IsNotEmpty()
     @ValidateNested({ each: true })
     @Type(() => CreateTestCaseDto)
-    testCases: CreateTestCaseDto[];
+    testCases!: CreateTestCaseDto[];
 
     @IsOptional()
     @IsNumber()
     @IsPositive()
-    timeLimit: number;
+    timeLimit!: number;
 
     @IsInt()
     @IsPositive()
-    memoryLimit: number;
+    memoryLimit!: number;
 
     @IsBoolean()
     @IsOptional()
-    isPublished: boolean;
+    isPublished!: boolean;
 }

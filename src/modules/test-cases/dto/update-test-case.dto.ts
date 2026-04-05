@@ -11,10 +11,10 @@ export class UpdateTestCaseDto extends PartialType(
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => CreateTestCaseIODto)
-    input: CreateTestCaseIODto[];
+    input!: CreateTestCaseIODto[];
 
     @IsOptional()
     @ValidateNested()
     @Type(() => CreateTestCaseIODto)
-    expectedOutput: CreateTestCaseIODto;
+    expectedOutput!: CreateTestCaseIODto;
 }
