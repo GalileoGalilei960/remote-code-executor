@@ -11,5 +11,102 @@ services:
             POSTGRES_USER: code_engine
             POSTGRES_PASSWORD: code_engine_password
             POSTGRES_DB: code_engine
+
+    redis-1: &redis-node
+        image: docker.io/library/redis:7.2
+        container_name: redis-1
+        command:
+            [
+                'redis-server',
+                '--cluster-enabled',
+                'yes',
+                '--cluster-config-file',
+                'nodes.conf',
+                '--cluster-node-timeout',
+                '5000',
+                '--appendonly',
+                'yes',
+            ]
+        networks:
+            redis-network:
+                ipv4_address: 172.20.0.11
+        volumes:
+            - redis-1-data:/data
+    redis-2:
+        <<: *redis-node
+        container_name: redis-2
+        networks:
+            redis-network:
+                ipv4_address: 172.20.0.12
+        volumes:
+            - redis-2-data:/data
+    redis-3:
+        <<: *redis-node
+        container_name: redis-3
+        networks:
+            redis-network:
+                ipv4_address: 172.20.0.13
+        volumes:
+            - redis-3-data:/data
+    redis-4:
+        <<: *redis-node
+        container_name: redis-4
+        networks:
+            redis-network:
+                ipv4_address: 172.20.0.14
+        volumes:
+            - redis-4-data:/data
+    redis-5:
+        <<: *redis-node
+        container_name: redis-5
+        networks:
+            redis-network:
+                ipv4_address: 172.20.0.15
+        volumes:
+            - redis-5-data:/data
+    redis-6:
+        <<: *redis-node
+        container_name: redis-6
+        networks:
+            redis-network:
+                ipv4_address: 172.20.0.16
+        volumes:
+            - redis-6-data:/data
+    redis-cluster-init:
+        image: docker.io/library/redis:7.2
+        container_name: redis-cluster-init
+        depends_on:
+            - redis-1
+            - redis-2
+            - redis-3
+            - redis-4
+            - redis-5
+            - redis-6
+        command: >
+            sh -c "
+            echo "Waiting for redis nodes to start"
+            sleep 5 &&
+            redis-cli --cluster create 
+            172.20.0.11:6379 172.20.0.12:6379 172.20.0.13:6379 
+            172.20.0.14:6379 172.20.0.15:6379 172.20.0.16:6379
+            --cluster-replicas 1
+            --cluster-yes"
+        volumes:
+            - redis-cluster-init-tmp:/data
+
 volumes:
     code_engine_data:
+    redis-1-data:
+    redis-2-data:
+    redis-3-data:
+    redis-4-data:
+    redis-5-data:
+    redis-6-data:
+    redis-cluster-init-tmp:
+
+networks:
+    redis-network:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 172.20.0.0/16
