@@ -11,7 +11,7 @@ import { Type } from 'class-transformer';
 
 export class CreateTestCaseDto {
     @IsBoolean()
-    isSample: boolean;
+    isSample!: boolean;
 
     @IsArray()
     @ArrayMinSize(1, {
@@ -20,11 +20,11 @@ export class CreateTestCaseDto {
     @IsNotEmpty()
     @ValidateNested({ each: true })
     @Type(() => CreateTestCaseIODto)
-    input: CreateTestCaseIODto[];
+    input!: CreateTestCaseIODto[];
 
     @IsNotEmpty({ message: 'Test case must have expected output' })
     @IsNotEmptyObject()
     @ValidateNested()
     @Type(() => CreateTestCaseIODto)
-    expectedOutput: CreateTestCaseIODto;
+    expectedOutput!: CreateTestCaseIODto;
 }

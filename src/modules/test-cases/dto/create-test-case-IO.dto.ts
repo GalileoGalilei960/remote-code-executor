@@ -14,12 +14,12 @@ export enum ParamTypes {
 
 export class CreateTestCaseIODto {
     @IsString()
-    name: string;
+    name!: string;
 
     @IsEnum(ParamTypes)
-    type: ParamTypes;
+    type!: ParamTypes;
 
     @IsString()
     @IsTypeMatch()
-    value: string;
+    value!: string;
 }
