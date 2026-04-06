@@ -9,8 +9,16 @@ export class SubmissionsService {
     constructor(private prisma: PrismaService) {}
 
     create(createSubmissionDto: CreateSubmissionDto) {
+        const { code, language, taskId, userId } = createSubmissionDto;
+
         return this.prisma.submission.create({
-            data: { ...createSubmissionDto, status: status_codes.PENDING },
+            data: {
+                code,
+                language,
+                taskId,
+                userId,
+                status: status_codes.PENDING,
+            },
         });
     }
 
