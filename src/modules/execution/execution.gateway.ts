@@ -26,6 +26,6 @@ export class ExecutionGateway implements OnGatewayConnection {
             submissionId: payload.submissionId,
         });
 
-        this.server.in(`${payload.userId}`).disconnectSockets(true);
+        // this.server.in(`${payload.userId}`).disconnectSockets(true);
     }
 }
