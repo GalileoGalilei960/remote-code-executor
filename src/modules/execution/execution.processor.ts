@@ -4,22 +4,33 @@ import { Job } from 'bullmq';
 import { ExecutionJobData } from './execution.service';
 import { SubmissionsService } from '../submissions/submissions.service';
 import { status_codes } from 'generated/prisma/enums';
+import { setTimeout } from 'timers/promises';
+import EventEmitter2 from 'eventemitter2';
 
 @Injectable()
-@Processor('execution')
+@Processor('execution', { concurrency: 5 })
 export class ExecutionProcessor extends WorkerHost {
-    constructor(private submissionsService: SubmissionsService) {
+    constructor(
+        private submissionsService: SubmissionsService,
+        private eventEmitter: EventEmitter2,
+    ) {
         super();
     }
 
     async process(job: Job<ExecutionJobData>) {
         console.log(`job ${job.id} is being done!`);
 
+        await setTimeout(5000);
+
         const rand = Math.random();
 
         if (rand > 0.5) throw new Error('you are unlucky');
 
-        await Promise.resolve();
+        this.eventEmitter.emit('jobDone', {
+            job: job.id,
+            submissionId: job.data.submissionId,
+            userId: job.data.userId,
+        });
     }
 
     @OnWorkerEvent('completed')

@@ -6,6 +6,8 @@ import { languages } from 'generated/prisma/enums';
 export interface ExecutionJobData {
     code: string;
     language: languages;
+    submissionId: number;
+    userId: number;
 }
 
 @Injectable()
@@ -14,12 +16,19 @@ export class ExecutionService {
         @InjectQueue('execution')
         private executionQueue: Queue<ExecutionJobData>,
     ) {}
-    async createJob(code: string, language: languages, submissionId: number) {
+    async createJob(
+        code: string,
+        language: languages,
+        submissionId: number,
+        userId: number,
+    ) {
         const job = await this.executionQueue.add(
             'executionJob',
             {
                 code,
                 language,
+                submissionId,
+                userId,
             },
             {
                 jobId: `submission-${submissionId}`,

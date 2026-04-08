@@ -38,6 +38,7 @@ export class ExecutionController {
             code,
             language,
             submissionId,
+            userId,
         );
 
         return job.data;

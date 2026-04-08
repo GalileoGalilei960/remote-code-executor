@@ -11,6 +11,7 @@ import { TestCasesModule } from './modules/test-cases/test-cases.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ExecutionModule } from './modules/execution/execution.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
     imports: [
@@ -22,6 +23,7 @@ import { SubmissionsModule } from './modules/submissions/submissions.module';
         TestCasesModule,
         ExecutionModule,
         SubmissionsModule,
+        EventEmitterModule.forRoot(),
     ],
     controllers: [AppController],
     providers: [
