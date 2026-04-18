@@ -19,7 +19,10 @@ export class ExecutionProcessor extends WorkerHost {
         super();
     }
 
-    async process(job: Job<ExecutionJobData>) {
+    async process(job: Job<ExecutionJobData>): Promise<{
+        executionTime: number;
+        maxMemory: number;
+    }> {
         console.log(`job ${job.id} is being done!`);
 
         let containerId: string | undefined;
@@ -74,12 +77,32 @@ export class ExecutionProcessor extends WorkerHost {
                     `Something went wrong in the container: Exit code ${raceResult?.StatusCode}`,
                 );
 
-            // If everything is OK signaling that job is done
-            this.eventEmitter.emit('jobDone', {
-                job: job.id,
-                submissionId: job.data.submissionId,
-                userId: job.data.userId,
-            });
+            const containerInspection =
+                await this.containersService.getContainerInspection(
+                    containerId,
+                );
+            const containerStats =
+                await this.containersService.getContainerStats(containerId);
+
+            const containerExecutionTime =
+                new Date(containerInspection.State.FinishedAt).getTime() -
+                new Date(containerInspection.State.StartedAt).getTime();
+            const maxConsumedMemoryMB =
+                containerStats.memory_stats?.max_usage / 1024 / 1024;
+
+            this.eventEmitter // If everything is OK signaling that job is done
+                .emit('jobDone', {
+                    job: job.id,
+                    submissionId: job.data.submissionId,
+                    userId: job.data.userId,
+                    executionTime: containerExecutionTime,
+                    maxMemory: maxConsumedMemoryMB,
+                });
+
+            return {
+                executionTime: containerExecutionTime,
+                maxMemory: maxConsumedMemoryMB,
+            };
         } catch (err) {
             console.log('catched error', err);
             throw err;
@@ -102,6 +125,8 @@ export class ExecutionProcessor extends WorkerHost {
         const submissionId = parseInt(job.id?.split('-')[1] ?? '0');
         await this.submissionsService.update(submissionId, {
             status: status_codes.ACCEPTED,
+            time: job.returnvalue?.executionTime as number,
+            memoryUsed: job.returnvalue?.maxMemory as number,
         });
 
         console.log(`job ${job.id} is done!!!`);

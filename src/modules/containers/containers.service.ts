@@ -86,6 +86,18 @@ export class ContainersService {
         await container.stop();
     }
 
+    async getContainerInspection(containerId: string) {
+        const container = this.docker.getContainer(containerId);
+
+        return container.inspect();
+    }
+
+    async getContainerStats(containerId: string) {
+        const container = this.docker.getContainer(containerId);
+
+        return container.stats({ stream: false });
+    }
+
     async removeContainer(containerId: string) {
         const container = this.docker.getContainer(containerId);
         await container.remove();
