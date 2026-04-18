@@ -12,6 +12,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ExecutionModule } from './modules/execution/execution.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ContainersModule } from './modules/containers/containers.module';
 
 @Module({
     imports: [
@@ -24,6 +25,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
         ExecutionModule,
         SubmissionsModule,
         EventEmitterModule.forRoot(),
+        ContainersModule,
     ],
     controllers: [AppController],
     providers: [

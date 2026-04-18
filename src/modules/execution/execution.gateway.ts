@@ -19,7 +19,7 @@ export class ExecutionGateway implements OnGatewayConnection {
 
     @OnEvent('jobDone')
     sendResult(payload: { job: string; submissionId: number; userId: number }) {
-        console.log('event catched');
+        console.log('event jobDone catched');
 
         this.server.to(`${payload.userId}`).emit('jobDone', {
             job: payload.job,
@@ -27,5 +27,10 @@ export class ExecutionGateway implements OnGatewayConnection {
         });
 
         // this.server.in(`${payload.userId}`).disconnectSockets(true);
+    }
+
+    @OnEvent('log')
+    sendLog(payload: { log: string; userId: number }) {
+        this.server.to(`${payload.userId}`).emit('log', { log: payload.log });
     }
 }
