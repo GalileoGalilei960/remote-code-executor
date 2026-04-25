@@ -1,10 +1,11 @@
 import {
-    ArrayMinSize,
+    // ArrayMinSize,
     IsArray,
     IsBoolean,
     IsEnum,
     IsInt,
-    IsNotEmpty,
+    // IsNotEmpty,
+    IsNotEmptyObject,
     IsNumber,
     IsOptional,
     IsPositive,
@@ -12,8 +13,9 @@ import {
     ValidateNested,
 } from 'class-validator';
 import { task_difficulties } from 'generated/prisma/enums';
-import { CreateTestCaseDto } from '../../test-cases/dto/create-test-case.dto';
+// import { CreateTestCaseDto } from '../../test-cases/dto/create-test-case.dto';
 import { Type } from 'class-transformer';
+import { CreateTaskIODto } from './create-task-IO.dto';
 
 export class CreateTaskDto {
     @IsString()
@@ -25,12 +27,12 @@ export class CreateTaskDto {
     @IsEnum(task_difficulties)
     difficulty!: task_difficulties;
 
-    @IsArray()
-    @ArrayMinSize(1, { message: 'Task must have at least one test case' })
-    @IsNotEmpty()
-    @ValidateNested({ each: true })
-    @Type(() => CreateTestCaseDto)
-    testCases!: CreateTestCaseDto[];
+    // @IsArray()
+    // @ArrayMinSize(1, { message: 'Task must have at least one test case' })
+    // @IsNotEmpty()
+    // @ValidateNested({ each: true })
+    // @Type(() => CreateTestCaseDto)
+    // testCases!: CreateTestCaseDto[];
 
     @IsOptional()
     @IsNumber()
@@ -44,4 +46,14 @@ export class CreateTaskDto {
     @IsBoolean()
     @IsOptional()
     isPublished!: boolean;
+
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateTaskIODto)
+    inputType!: CreateTaskIODto[];
+
+    @IsNotEmptyObject()
+    @ValidateNested({ each: true })
+    @Type(() => CreateTaskIODto)
+    expectedOutputType!: CreateTaskIODto;
 }

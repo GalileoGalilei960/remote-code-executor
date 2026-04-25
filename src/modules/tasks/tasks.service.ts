@@ -9,16 +9,13 @@ export class TasksService {
     constructor(private prisma: PrismaService) {}
 
     create(createTaskDto: CreateTaskDto) {
-        const { testCases, ...taskData } = createTaskDto;
+        const { inputType, expectedOutputType, ...taskData } = createTaskDto;
 
         return this.prisma.task.create({
             data: {
                 ...taskData,
-                testCases: {
-                    createMany: {
-                        data: instanceToPlain(testCases) as any[],
-                    },
-                },
+                inputType: instanceToPlain(inputType),
+                expectedOutputType: instanceToPlain(expectedOutputType),
             },
             include: { testCases: true },
         });
@@ -39,10 +36,13 @@ export class TasksService {
     }
 
     update(id: number, updateTaskDto: UpdateTaskDto) {
+        const { inputType, expectedOutputType, ...taskData } = updateTaskDto;
         return this.prisma.task.update({
             where: { id },
             data: {
-                ...updateTaskDto,
+                ...taskData,
+                inputType: instanceToPlain(inputType),
+                expectedOutputType: instanceToPlain(expectedOutputType),
             },
         });
     }

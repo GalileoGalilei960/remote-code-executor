@@ -51,17 +51,19 @@ model User {
 }
 
 model Task {
-  id          Int               @id @default(autoincrement())
-  title       String
-  description String
-  difficulty  task_difficulties
-  isPublished Boolean           @default(false) @map("is_published")
-  memoryLimit Int               @map("memory_limit")
-  timeLimit   Float             @default(10) @map("time_limit")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime?         @updatedAt
-  submissions Submission[]
-  testCases   TestCase[]
+  id                 Int               @id @default(autoincrement())
+  title              String
+  description        String
+  difficulty         task_difficulties
+  isPublished        Boolean           @default(false) @map("is_published")
+  memoryLimit        Int               @map("memory_limit")
+  timeLimit          Float             @default(10) @map("time_limit")
+  inputType          Json
+  expectedOutputType Json              @map("expected_output")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime?         @updatedAt
+  submissions        Submission[]
+  testCases          TestCase[]
 
   @@map("tasks")
 }

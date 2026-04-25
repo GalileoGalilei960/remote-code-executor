@@ -1,11 +1,11 @@
-import {
-    registerDecorator,
-    ValidationArguments,
-    ValidationOptions,
-    ValidatorConstraint,
-    ValidatorConstraintInterface,
-} from 'class-validator';
-import { CreateTestCaseIODto } from 'src/modules/test-cases/dto/create-test-case-IO.dto';
+// import {
+//     registerDecorator,
+//     ValidationArguments,
+//     ValidationOptions,
+//     ValidatorConstraint,
+//     ValidatorConstraintInterface,
+// } from 'class-validator';
+// import { CreateTestCaseIODto } from '@/common/types/param.types';
 import * as z from 'zod';
 
 export const typeMatchMap = {
@@ -75,42 +75,42 @@ export const typeMatchMap = {
     },
 };
 
-@ValidatorConstraint({ name: 'IsTypeMatch', async: false })
-export class IsTypeMatchConstrain implements ValidatorConstraintInterface {
-    validate(
-        value: string,
-        validationArguments?: ValidationArguments,
-    ): boolean {
-        try {
-            const object = validationArguments?.object as CreateTestCaseIODto;
+// @ValidatorConstraint({ name: 'IsTypeMatch', async: false })
+// export class IsTypeMatchConstrain implements ValidatorConstraintInterface {
+//     validate(
+//         value: string,
+//         validationArguments?: ValidationArguments,
+//     ): boolean {
+//         try {
+//             const object = validationArguments?.object as CreateTestCaseIODto;
 
-            if (!typeMatchMap[object.type]) return false;
+//             if (!typeMatchMap[object.type]) return false;
 
-            const stringifiedValue =
-                typeof value === 'string' ? value : JSON.stringify(value);
+//             const stringifiedValue =
+//                 typeof value === 'string' ? value : JSON.stringify(value);
 
-            const typeMatchFunc = typeMatchMap[object.type];
-            return typeMatchFunc(stringifiedValue);
-        } catch {
-            return false;
-        }
-    }
+//             const typeMatchFunc = typeMatchMap[object.type];
+//             return typeMatchFunc(stringifiedValue);
+//         } catch {
+//             return false;
+//         }
+//     }
 
-    defaultMessage(validationArguments?: ValidationArguments): string {
-        const object = validationArguments?.object as CreateTestCaseIODto;
-        const expectedType = object?.type || 'unknown';
+//     defaultMessage(validationArguments?: ValidationArguments): string {
+//         const object = validationArguments?.object as CreateTestCaseIODto;
+//         const expectedType = object?.type || 'unknown';
 
-        return `The value does not match the expected type: ${expectedType}`;
-    }
-}
+//         return `The value does not match the expected type: ${expectedType}`;
+//     }
+// }
 
-export function IsTypeMatch(validationOptions?: ValidationOptions) {
-    return function (object: object, propertyName: string) {
-        registerDecorator({
-            target: object.constructor,
-            propertyName,
-            validator: IsTypeMatchConstrain,
-            options: validationOptions,
-        });
-    };
-}
+// export function IsTypeMatch(validationOptions?: ValidationOptions) {
+//     return function (object: object, propertyName: string) {
+//         registerDecorator({
+//             target: object.constructor,
+//             propertyName,
+//             validator: IsTypeMatchConstrain,
+//             options: validationOptions,
+//         });
+//     };
+// }

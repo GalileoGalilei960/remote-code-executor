@@ -15,8 +15,8 @@ export class TestCasesController {
     constructor(private readonly testCasesService: TestCasesService) {}
 
     @Get(':id')
-    findOne(@Param('id', ParseIntPipe) id: string) {
-        return this.testCasesService.findOne(+id);
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.testCasesService.findOne(id);
     }
 
     @Patch(':id')
@@ -24,11 +24,11 @@ export class TestCasesController {
         @Param('id', ParseIntPipe) id: number,
         @Body() updateTestCaseDto: UpdateTestCaseDto,
     ) {
-        return this.testCasesService.update(+id, updateTestCaseDto);
+        return this.testCasesService.update(id, updateTestCaseDto);
     }
 
     @Delete(':id')
     remove(@Param('id', ParseIntPipe) id: number) {
-        return this.testCasesService.remove(+id);
+        return this.testCasesService.remove(id);
     }
 }

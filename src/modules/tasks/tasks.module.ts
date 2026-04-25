@@ -6,6 +6,7 @@ import { TestCasesModule } from '../test-cases/test-cases.module';
 
 @Module({
     imports: [PrismaModule, TestCasesModule],
+    exports: [TasksService],
     controllers: [TasksController],
     providers: [TasksService],
 })
