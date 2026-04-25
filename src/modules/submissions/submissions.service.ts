@@ -27,7 +27,7 @@ export class SubmissionsService {
     }
 
     findOne(id: number) {
-        return this.prisma.submission.findUnique({ where: { id } });
+        return this.prisma.submission.findUniqueOrThrow({ where: { id } });
     }
 
     update(id: number, updateSubmissionDto: UpdateSubmissionDto) {

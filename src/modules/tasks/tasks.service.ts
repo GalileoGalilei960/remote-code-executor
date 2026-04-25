@@ -29,7 +29,7 @@ export class TasksService {
     }
 
     findOne(id: number) {
-        return this.prisma.task.findUnique({
+        return this.prisma.task.findUniqueOrThrow({
             where: { id },
             include: { testCases: true },
         });

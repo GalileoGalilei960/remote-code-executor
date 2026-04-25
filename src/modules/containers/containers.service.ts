@@ -9,13 +9,14 @@ export class ContainersService {
         socketPath: '/run/user/1000/podman/podman.sock',
     });
 
-    async createContainer(code: string) {
+    async createContainer(containerImage: string, cmd: string[]) {
         const container = await this.docker.createContainer({
-            Image: 'docker.io/library/node:20-alpine',
+            Image: `docker.io/library/${containerImage}`,
             AttachStdout: true,
             AttachStderr: true,
             StopTimeout: 15,
-            Cmd: ['node', '-e', code],
+            Cmd: cmd,
+            WorkingDir: '/app',
             HostConfig: {
                 PidsLimit: 10,
                 NanoCpus: 50000000,
@@ -78,6 +79,12 @@ export class ContainersService {
         observeStdErrOutput.subscribe(replayError);
 
         return [replayError, replayOutput];
+    }
+
+    async putArchive(containerId: string, archive: Buffer) {
+        const container = this.docker.getContainer(containerId);
+
+        await container.putArchive(archive, { path: '/app' });
     }
 
     async stopContainer(containerId: string) {

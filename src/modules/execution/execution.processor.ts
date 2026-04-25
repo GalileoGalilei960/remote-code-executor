@@ -7,6 +7,7 @@ import { status_codes } from 'generated/prisma/enums';
 import EventEmitter2 from 'eventemitter2';
 import { ContainersService } from '../containers/containers.service';
 import { Subscription } from 'rxjs';
+import { GetCodeParserFactory } from './code-parser/get-code-parser.factory';
 
 @Injectable()
 @Processor('execution', { concurrency: 5 })
@@ -15,6 +16,7 @@ export class ExecutionProcessor extends WorkerHost {
         private submissionsService: SubmissionsService,
         private containersService: ContainersService,
         private eventEmitter: EventEmitter2,
+        private getCodeParserFactory: GetCodeParserFactory,
     ) {
         super();
     }
@@ -27,10 +29,19 @@ export class ExecutionProcessor extends WorkerHost {
         let replayErrorSubscription: Subscription | undefined;
         let timeout: NodeJS.Timeout | undefined;
 
+        const codeParser = this.getCodeParserFactory.getCodeParser(
+            job.data.language,
+        );
+        let outputLogs = '';
+        let successFlag = false;
+        let metrics: { time?: number; memory?: number } = {};
+        let successToken = '';
+
         try {
             // Creating container
             containerId = await this.containersService.createContainer(
-                job.data.code,
+                codeParser.getContainerImage(),
+                ['node', 'index.js'],
             );
 
             // Receiving logs from continer and sending them to the socket
@@ -42,7 +53,39 @@ export class ExecutionProcessor extends WorkerHost {
             });
             replayOutputSubscription = replayOutput.subscribe((log: string) => {
                 this.eventEmitter.emit('log', { log, userId: job.data.userId });
+
+                outputLogs += log;
+                if (outputLogs.length > 2000)
+                    outputLogs = outputLogs.slice(-2000);
+
+                if (outputLogs.includes(successToken)) successFlag = true;
+
+                const metricsString = outputLogs.match(/###METRICS###(.*?)###/);
+                if (metricsString) {
+                    metrics = JSON.parse(metricsString[1]) as {
+                        time?: number;
+                        memory?: number;
+                    };
+                }
             });
+
+            // Inserting archive
+            const submission = await this.submissionsService.findOne(
+                job.data.submissionId,
+            );
+            codeParser.validateCode(job.data.code);
+            const { code, key } = await codeParser.parseCode(
+                job.data.code,
+                submission.taskId,
+                { archive: true },
+            );
+
+            successToken = key;
+
+            await this.containersService.putArchive(
+                containerId,
+                code as Buffer,
+            );
 
             // Running container
             await this.containersService.runContainer(containerId);
@@ -75,11 +118,17 @@ export class ExecutionProcessor extends WorkerHost {
                 );
 
             // If everything is OK signaling that job is done
-            this.eventEmitter.emit('jobDone', {
-                job: job.id,
-                submissionId: job.data.submissionId,
-                userId: job.data.userId,
-            });
+            if (successFlag) {
+                this.eventEmitter.emit('jobDone', {
+                    job: job.id,
+                    submissionId: job.data.submissionId,
+                    userId: job.data.userId,
+                });
+                return metrics;
+            }
+
+            // If we are here then the solution is wrong
+            throw new Error('WRONG_ANSWER');
         } catch (err) {
             console.log('catched error', err);
             throw err;
