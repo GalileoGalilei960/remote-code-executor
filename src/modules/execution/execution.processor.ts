@@ -21,7 +21,10 @@ export class ExecutionProcessor extends WorkerHost {
         super();
     }
 
-    async process(job: Job<ExecutionJobData>) {
+    async process(job: Job<ExecutionJobData>): Promise<{
+        executionTime: number;
+        maxMemory: number;
+    }> {
         console.log(`job ${job.id} is being done!`);
 
         let containerId: string | undefined;
@@ -34,7 +37,7 @@ export class ExecutionProcessor extends WorkerHost {
         );
         let outputLogs = '';
         let successFlag = false;
-        let metrics: { time?: number; memory?: number } = {};
+        let metrics: { time: number; memory: number } = { time: 0, memory: 0 };
         let successToken = '';
 
         try {
@@ -63,8 +66,8 @@ export class ExecutionProcessor extends WorkerHost {
                 const metricsString = outputLogs.match(/###METRICS###(.*?)###/);
                 if (metricsString) {
                     metrics = JSON.parse(metricsString[1]) as {
-                        time?: number;
-                        memory?: number;
+                        time: number;
+                        memory: number;
                     };
                 }
             });
@@ -123,8 +126,13 @@ export class ExecutionProcessor extends WorkerHost {
                     job: job.id,
                     submissionId: job.data.submissionId,
                     userId: job.data.userId,
+                    executionTime: metrics.time,
+                    maxMemory: metrics.memory,
                 });
-                return metrics;
+                return {
+                    executionTime: metrics.time,
+                    maxMemory: metrics.memory,
+                };
             }
 
             // If we are here then the solution is wrong
@@ -149,8 +157,14 @@ export class ExecutionProcessor extends WorkerHost {
     @OnWorkerEvent('completed')
     async onCompleted(job: Job) {
         const submissionId = parseInt(job.id?.split('-')[1] ?? '0');
+        const returnValue = job.returnvalue as
+            | { executionTime?: number; maxMemory?: number }
+            | undefined;
+
         await this.submissionsService.update(submissionId, {
             status: status_codes.ACCEPTED,
+            time: returnValue?.executionTime ?? 0,
+            memoryUsed: returnValue?.maxMemory ?? 0,
         });
 
         console.log(`job ${job.id} is done!!!`);
