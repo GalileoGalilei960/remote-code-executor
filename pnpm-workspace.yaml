@@ -2,6 +2,9 @@ onlyBuiltDependencies:
   - '@nestjs/core'
   - '@prisma/engines'
   - bcrypt
+  - cpu-features
   - msgpackr-extract
   - prisma
+  - protobufjs
+  - ssh2
   - unrs-resolver

@@ -46,6 +46,7 @@ model User {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime?    @updatedAt @map("updated_at")
   submissions Submission[]
+  sessions    Session[]
 
   @@map("users")
 }
@@ -96,4 +97,19 @@ model TestCase {
   task           Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("test_cases")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  refreshToken String   @map("refresh_token")
+  device       String
+  userAgent    String   @map("user_agent")
+  ip           String
+  expiresAt    DateTime @map("expires_at")
+  lastUsedAt   DateTime @default(now()) @map("last_used_at")
+  isRevoked    Boolean  @default(false) @map("is_revoked")
+  userId       Int      @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
