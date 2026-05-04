@@ -1,7 +1,7 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
@@ -13,11 +13,26 @@ import { ExecutionModule } from './modules/execution/execution.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ContainersModule } from './modules/containers/containers.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtModule } from '@nestjs/jwt';
+import { SessionsModule } from './modules/sessions/sessions.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
         BullModule.forRoot({ connection: { host: 'localhost', port: 6379 } }),
+        JwtModule.registerAsync({
+            global: true,
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => {
+                return {
+                    secret: configService.getOrThrow<string>(
+                        'JWT_ACCESS_SECRET',
+                    ),
+                };
+            },
+        }),
         PrismaModule,
         UsersModule,
         TasksModule,
@@ -26,6 +41,8 @@ import { ContainersModule } from './modules/containers/containers.module';
         SubmissionsModule,
         EventEmitterModule.forRoot(),
         ContainersModule,
+        AuthModule,
+        SessionsModule,
     ],
     controllers: [AppController],
     providers: [
