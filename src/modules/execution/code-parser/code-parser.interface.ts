@@ -6,6 +6,7 @@ export interface CodeParser {
     ): Promise<ParseCodeResult>;
     getContainerImage(): string;
     validateCode(code: string): boolean;
+    getStartCMD(): string[];
 }
 
 export interface ParseCodeOptions {

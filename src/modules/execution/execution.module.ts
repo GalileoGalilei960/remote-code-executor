@@ -10,6 +10,7 @@ import { JavaScriptParser } from './code-parser/parsers/java-script.parser';
 import { GetCodeParserFactory } from './code-parser/get-code-parser.factory';
 import { TestCasesModule } from '../test-cases/test-cases.module';
 import { TasksModule } from '../tasks/tasks.module';
+import { PythonParser } from './code-parser/parsers/python.parser';
 
 @Module({
     imports: [
@@ -26,6 +27,7 @@ import { TasksModule } from '../tasks/tasks.module';
         ExecutionGateway,
         GetCodeParserFactory,
         JavaScriptParser,
+        PythonParser,
     ],
 })
 export class ExecutionModule {}

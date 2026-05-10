@@ -45,7 +45,7 @@ export class ExecutionProcessor extends WorkerHost {
             // Creating container
             containerId = await this.containersService.createContainer(
                 codeParser.getContainerImage(),
-                ['node', 'index.js'],
+                codeParser.getStartCMD(),
             );
 
             // Receiving logs from continer and sending them to the socket

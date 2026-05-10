@@ -139,4 +139,8 @@ run().catch(err => {
             throw new Error('SYNTAX_ERROR');
         }
     }
+
+    getStartCMD(): string[] {
+        return ['node', 'index.js'];
+    }
 }
