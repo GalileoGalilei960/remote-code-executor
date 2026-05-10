@@ -20,7 +20,7 @@ export class ContainersService {
             HostConfig: {
                 PidsLimit: 10,
                 NanoCpus: 50000000,
-                Memory: 128 * 1024 * 1024,
+                Memory: 12 * 1024 * 1024,
             },
             NetworkDisabled: true,
         });
@@ -61,17 +61,18 @@ export class ContainersService {
 
         const observeStdOutOutput = fromEvent(stdOutOutput, 'data').pipe(
             map((log: unknown) => {
-                const receivedLog =
-                    `${new Date().getTime()} ${log as string}`.trimEnd();
+                const timestamp = new Date().toISOString();
+                const receivedLog = `[${timestamp}] ${log as string}`.trimEnd();
 
-                console.log('recieved log', receivedLog);
+                console.log('received log', receivedLog);
 
                 return receivedLog;
             }),
         );
         const observeStdErrOutput = fromEvent(stdErrOutput, 'data').pipe(
             map((log: unknown) => {
-                return `Error: ${Date.now()} ${log as string}`.trimEnd();
+                const timestamp = new Date().toISOString();
+                return `[${timestamp}] ERROR: ${log as string}`.trimEnd();
             }),
         );
 

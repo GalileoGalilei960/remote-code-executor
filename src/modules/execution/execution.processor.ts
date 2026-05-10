@@ -36,6 +36,7 @@ export class ExecutionProcessor extends WorkerHost {
             job.data.language,
         );
         let outputLogs = '';
+        let errorLogs = '';
         let successFlag = false;
         let metrics: { time: number; memory: number } = { time: 0, memory: 0 };
         let successToken = '';
@@ -53,6 +54,9 @@ export class ExecutionProcessor extends WorkerHost {
 
             replayErrorSubscription = replayError.subscribe((log: string) => {
                 this.eventEmitter.emit('log', { log, userId: job.data.userId });
+
+                errorLogs += log;
+                if (errorLogs.length > 2000) errorLogs = errorLogs.slice(-2000);
             });
             replayOutputSubscription = replayOutput.subscribe((log: string) => {
                 this.eventEmitter.emit('log', { log, userId: job.data.userId });
@@ -76,12 +80,13 @@ export class ExecutionProcessor extends WorkerHost {
             const submission = await this.submissionsService.findOne(
                 job.data.submissionId,
             );
-            codeParser.validateCode(job.data.code);
             const { code, key } = await codeParser.parseCode(
                 job.data.code,
                 submission.taskId,
                 { archive: true },
             );
+
+            // codeParser.validateCode();
 
             successToken = key;
 
@@ -115,10 +120,23 @@ export class ExecutionProcessor extends WorkerHost {
                 this.containersService.awaitContainer(containerId),
             ])) as { StatusCode: number };
 
-            if (raceResult?.StatusCode !== 0)
+            await this.submissionsService.update(job.data.submissionId, {
+                result: { exitCode: raceResult.StatusCode },
+            });
+
+            if (raceResult?.StatusCode !== 0) {
+                switch (raceResult.StatusCode) {
+                    case 137: {
+                        throw new Error(status_codes.MEMORY_LIMIT_EXCEEDED);
+                    }
+                    case 2: {
+                        throw new Error(status_codes.WRONG_ANSWER);
+                    }
+                }
                 throw new Error(
                     `Something went wrong in the container: Exit code ${raceResult?.StatusCode}`,
                 );
+            }
 
             // If everything is OK signaling that job is done
             if (successFlag) {
@@ -138,6 +156,11 @@ export class ExecutionProcessor extends WorkerHost {
             // If we are here then the solution is wrong
             throw new Error('WRONG_ANSWER');
         } catch (err) {
+            await this.submissionsService.update(job.data.submissionId, {
+                logs: errorLogs,
+                errorMessage: (err as Error).message,
+            });
+
             console.log('catched error', err);
             throw err;
         } finally {
@@ -176,7 +199,7 @@ export class ExecutionProcessor extends WorkerHost {
         await this.submissionsService.update(submissionId, {
             status:
                 status_codes[job.failedReason as status_codes] ||
-                status_codes.WRONG_ANSWER,
+                status_codes.RUNTIME_ERROR,
         });
         // console.log('failed reason', job.failedReason, 'failed reason');
 
