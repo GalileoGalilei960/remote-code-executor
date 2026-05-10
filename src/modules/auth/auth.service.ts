@@ -93,7 +93,8 @@ export class AuthService {
         };
 
         const accessToken = await this.jwt.signAsync(jwtPayload, {
-            expiresIn: '15m',
+            //For testing
+            expiresIn: '15d',
         });
         const refreshToken = await this.jwt.signAsync(jwtPayload, {
             expiresIn: '7d',
@@ -117,10 +118,24 @@ export class AuthService {
     }
 
     async refreshTokens(refreshToken: string) {
-        const { email, sub, sessionId } =
-            await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
-                secret: this.configService.getOrThrow('JWT_REFRESH_SECRET'),
-            });
+        if (!refreshToken)
+            throw new BadRequestException('Refresh Token is not provided');
+
+        let email: string, sub: number, sessionId: string;
+        try {
+            const payload = await this.jwt.verifyAsync<JwtPayload>(
+                refreshToken,
+                {
+                    secret: this.configService.getOrThrow('JWT_REFRESH_SECRET'),
+                },
+            );
+
+            email = payload.email;
+            sub = payload.sub;
+            sessionId = payload.sessionId;
+        } catch {
+            throw new BadRequestException('Expired Refresh Token');
+        }
 
         const newAccessToken = await this.jwt.signAsync(
             { email, sub, sessionId },
@@ -153,6 +168,9 @@ export class AuthService {
             ),
         });
 
-        return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+        return {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+        };
     }
 }

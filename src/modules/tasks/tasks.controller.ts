@@ -7,12 +7,14 @@ import {
     Param,
     Delete,
     ParseIntPipe,
+    UseGuards,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { CreateTestCaseDto } from '../test-cases/dto/create-test-case.dto';
 import { TestCasesService } from '../test-cases/test-cases.service';
+import { AccessTokenGuard } from '../auth/guards/auth.guard';
 // import { UpdateTestCaseDto } from '../test-cases/dto/update-test-case.dto';
 
 @Controller('tasks')
@@ -22,6 +24,7 @@ export class TasksController {
         private readonly testCasesService: TestCasesService,
     ) {}
 
+    @UseGuards(AccessTokenGuard)
     @Post()
     create(@Body() createTaskDto: CreateTaskDto) {
         return this.tasksService.create(createTaskDto);
@@ -37,6 +40,7 @@ export class TasksController {
         return this.tasksService.findOne(taskId);
     }
 
+    @UseGuards(AccessTokenGuard)
     @Patch(':taskId')
     update(@Param('taskId') id: number, @Body() updateTaskDto: UpdateTaskDto) {
         return this.tasksService.update(id, updateTaskDto);
@@ -50,6 +54,7 @@ export class TasksController {
     //     return this.testCasesService.update(testCaseId, updateTestCase);
     // }
 
+    @UseGuards(AccessTokenGuard)
     @Delete(':taskId')
     remove(@Param('taskId') taskId: number) {
         return this.tasksService.remove(taskId);

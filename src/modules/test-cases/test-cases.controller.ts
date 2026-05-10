@@ -6,9 +6,11 @@ import {
     Delete,
     ParseIntPipe,
     Get,
+    UseGuards,
 } from '@nestjs/common';
 import { TestCasesService } from './test-cases.service';
 import { UpdateTestCaseDto } from './dto/update-test-case.dto';
+import { AccessTokenGuard } from '../auth/guards/auth.guard';
 
 @Controller('test-cases')
 export class TestCasesController {
@@ -19,6 +21,7 @@ export class TestCasesController {
         return this.testCasesService.findOne(id);
     }
 
+    @UseGuards(AccessTokenGuard)
     @Patch(':id')
     update(
         @Param('id', ParseIntPipe) id: number,
@@ -27,6 +30,7 @@ export class TestCasesController {
         return this.testCasesService.update(id, updateTestCaseDto);
     }
 
+    @UseGuards(AccessTokenGuard)
     @Delete(':id')
     remove(@Param('id', ParseIntPipe) id: number) {
         return this.testCasesService.remove(id);

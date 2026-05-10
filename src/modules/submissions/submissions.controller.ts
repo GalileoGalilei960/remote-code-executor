@@ -7,11 +7,14 @@ import {
     Param,
     Delete,
     ParseIntPipe,
+    UseGuards,
 } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
+import { AccessTokenGuard } from '../auth/guards/auth.guard';
 
+@UseGuards(AccessTokenGuard)
 @Controller('submissions')
 export class SubmissionsController {
     constructor(private readonly submissionsService: SubmissionsService) {}

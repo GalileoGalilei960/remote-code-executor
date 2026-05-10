@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     HttpCode,
@@ -6,10 +7,14 @@ import {
     Param,
     ParseIntPipe,
     Post,
+    Req,
+    UseGuards,
 } from '@nestjs/common';
 import { ExecutionService } from './execution.service';
 import { SubmissionsService } from '../submissions/submissions.service';
 import { ExecuteCodeDto } from './dto/execute-code.dto';
+import { AccessTokenGuard } from '../auth/guards/auth.guard';
+import type { Request } from 'express';
 
 @Controller('execution')
 export class ExecutionController {
@@ -18,14 +23,18 @@ export class ExecutionController {
         private readonly submissionsService: SubmissionsService,
     ) {}
 
-    //TODO implement getCurrentUser decorator
+    @UseGuards(AccessTokenGuard)
     @HttpCode(HttpStatus.ACCEPTED)
-    @Post(':taskId/:userId')
+    @Post(':taskId')
     async executeCode(
         @Param('taskId', ParseIntPipe) taskId: number,
-        @Param('userId', ParseIntPipe) userId: number,
+        @Req() req: Request,
         @Body() executeCodeDto: ExecuteCodeDto,
     ) {
+        const userId = req.user?.sub;
+
+        if (!userId) throw new BadRequestException('Invalid Access Token');
+
         const { code, language } = executeCodeDto;
         const { id: submissionId } = await this.submissionsService.create({
             code,
