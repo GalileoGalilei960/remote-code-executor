@@ -36,6 +36,8 @@ enum status_codes {
   WRONG_ANSWER
   RUNTIME_ERROR
   TIME_LIMIT_EXCEEDED
+  MEMORY_LIMIT_EXCEEDED
+  SYNTAX_ERROR
 }
 
 model User {
@@ -77,6 +79,7 @@ model Submission {
   language     languages
   result       Json?
   errorMessage String?      @map("error_message")
+  logs         String?
   memoryUsed   Int?         @map("memory_used")
   createdAt    DateTime     @default(now()) @map("created_at")
   userId       Int          @map("user_id")

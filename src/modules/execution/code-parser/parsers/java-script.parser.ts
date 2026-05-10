@@ -9,6 +9,7 @@ import { TasksService } from '@/modules/tasks/tasks.service';
 import { CreateTaskIODto } from '@/modules/tasks/dto/create-task-IO.dto';
 import * as crypto from 'crypto';
 import * as tar from 'tar-stream';
+import * as vm from 'vm';
 
 @Injectable()
 export class JavaScriptParser implements CodeParser {
@@ -16,6 +17,7 @@ export class JavaScriptParser implements CodeParser {
         private testCasesService: TestCasesService,
         private tasksService: TasksService,
     ) {}
+
     getContainerImage(): string {
         return 'node:20-alpine';
     }
@@ -51,8 +53,9 @@ export class JavaScriptParser implements CodeParser {
             .map((param) => param.name)
             .join(', ');
 
-        const parsedFunction = `async function testedFunction(${parsedFunctionParameters}){
-        ${code}}`;
+        const parsedFunction = `async function testedFunction(${parsedFunctionParameters}) {
+${code}
+}`;
 
         const successToken = crypto.randomUUID();
 
@@ -79,10 +82,14 @@ async function run() {
             result = await testedFunction(...args);
             assert.deepStrictEqual(result, output);
         } catch (err) {
-            console.error(\`Testcase \${i+1} failed. Expected \${JSON.stringify(output)}, recieved \${JSON.stringify(result)}\`);
-            process.exit(1);
-        }
+    if (err.name === 'AssertionError') {
+        console.error(\`Testcase \${i + 1} failed. Expected \${JSON.stringify(output)}, recieved \${JSON.stringify(result)}\`);
+        process.exit(2)
+    } else {
+        console.error(\`Testcase \${i + 1} crashed with runtime error: \${err.name} - \${err.message}\`);
     }
+    process.exit(1);
+}
 
     const end = performance.now();
     const usage = process.resourceUsage();
@@ -96,12 +103,16 @@ async function run() {
     console.log('${successToken}');
     process.exit(0);
 }
+}
 
 run().catch(err => {
     console.error('Fatal Error: ' + err.message);
     process.exit(1);
 });
 `;
+        // console.log(parsedCode);
+
+        this.validateCode(parsedCode);
 
         if (options?.archive) {
             const pack = tar.pack();
@@ -118,6 +129,14 @@ run().catch(err => {
     }
 
     validateCode(code: string): boolean {
-        return code ? true : false;
+        try {
+            new vm.Script(code);
+
+            // console.log('i was here');
+
+            return true;
+        } catch {
+            throw new Error('SYNTAX_ERROR');
+        }
     }
 }
