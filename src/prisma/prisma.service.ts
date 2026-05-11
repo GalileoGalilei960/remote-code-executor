@@ -35,9 +35,9 @@ export class PrismaService
             this.logger.log(`Database connected \x1b[33m+${duration}ms\x1b[0m`);
         } catch (e) {
             this.logger.error('DATABASE CONNECTION FAILED');
-            console.log(e);
+            console.log('error', e);
 
-            process.exit(1);
+            throw e;
         }
     }
 

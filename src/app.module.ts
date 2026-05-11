@@ -17,8 +17,22 @@ import { SessionsModule } from './modules/sessions/sessions.module';
 
 @Module({
     imports: [
-        ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
-        BullModule.forRoot({ connection: { host: 'localhost', port: 6379 } }),
+        ConfigModule.forRoot({
+            envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+            isGlobal: true,
+        }),
+        BullModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                connection: {
+                    host: configService.getOrThrow<string>('REDIS_HOST'),
+                    port: Number(
+                        configService.getOrThrow<string>('REDIS_PORT'),
+                    ),
+                },
+            }),
+        }),
         JwtModule.registerAsync({
             global: true,
             imports: [ConfigModule],
