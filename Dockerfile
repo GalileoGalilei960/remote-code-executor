@@ -3,6 +3,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 RUN corepack enable pnpm
+RUN pnpm config set ignore-scripts false
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
