@@ -3,6 +3,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 ENV CI=TRUE
+ENV NODE_ENV=production
 
 RUN corepack enable pnpm
 
@@ -26,7 +27,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY .env ./
 
 EXPOSE 3000
 

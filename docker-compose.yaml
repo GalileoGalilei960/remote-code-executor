@@ -15,7 +15,7 @@ services:
             redis:
                 condition: service_healthy
         volumes:
-            - /run/podman/podman.sock:/var/run/docker.sock
+            - /run/user/1000/podman/podman.sock:/var/run/docker.sock
         privileged: true
 
     postgres:
