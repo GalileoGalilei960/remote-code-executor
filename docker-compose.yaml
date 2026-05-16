@@ -10,8 +10,10 @@ services:
         env_file:
             - .env
         depends_on:
-            - postgres
-            - redis
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_started
         volumes:
             - /run/podman/podman.sock:/var/run/docker.sock
 
@@ -25,6 +27,11 @@ services:
             - code_engine_data:/var/lib/postgresql
         env_file:
             - .env
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U code_engine -d code_engine']
+            interval: 5s
+            timeout: 5s
+            retries: 5
 
     redis:
         image: docker.io/library/redis:7.2
