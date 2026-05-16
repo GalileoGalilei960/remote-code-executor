@@ -112,7 +112,7 @@ export class ExecutionProcessor extends WorkerHost {
                                     `stopping container aborted because ${reason}`,
                                 );
                             });
-                }, 10000);
+                }, submission.task.timeLimit * 1000);
             });
 
             const raceResult = (await Promise.race([
@@ -131,6 +131,9 @@ export class ExecutionProcessor extends WorkerHost {
                     }
                     case 2: {
                         throw new Error(status_codes.WRONG_ANSWER);
+                    }
+                    case 1: {
+                        throw new Error(status_codes.RUNTIME_ERROR);
                     }
                 }
                 throw new Error(
@@ -158,10 +161,14 @@ export class ExecutionProcessor extends WorkerHost {
         } catch (err) {
             await this.submissionsService.update(job.data.submissionId, {
                 logs: errorLogs,
-                errorMessage: (err as Error).message,
+                errorMessage: String(err),
             });
 
             console.log('catched error', err);
+            this.eventEmitter.emit('log', {
+                log: String(err),
+                userId: job.data.userId,
+            });
             throw err;
         } finally {
             if (replayOutputSubscription)

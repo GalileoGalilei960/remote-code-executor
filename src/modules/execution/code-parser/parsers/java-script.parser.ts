@@ -76,20 +76,23 @@ async function run() {
         
         try {
             const tc = testCases[i];
-            const args = tc.input.map((arg) => JSON.parse(arg));
-            output = JSON.parse(tc.expectedOutput);
+            
+            // Prisma вже все розпарсила, а ми серіалізували це прямо в код як JS-об'єкти
+            const args = tc.input;
+            output = tc.expectedOutput;
             
             result = await testedFunction(...args);
             assert.deepStrictEqual(result, output);
         } catch (err) {
-    if (err.name === 'AssertionError') {
-        console.error(\`Testcase \${i + 1} failed. Expected \${JSON.stringify(output)}, recieved \${JSON.stringify(result)}\`);
-        process.exit(2)
-    } else {
-        console.error(\`Testcase \${i + 1} crashed with runtime error: \${err.name} - \${err.message}\`);
+            if (err.name === 'AssertionError') {
+                console.error(\`Testcase \${i + 1} failed. Expected \${JSON.stringify(output)}, recieved \${JSON.stringify(result)}\`);
+                process.exit(2)
+            } else {
+                console.error(\`Testcase \${i + 1} crashed with runtime error: \${err.name} - \${err.message}\`);
+            }
+            process.exit(1);
+        }
     }
-    process.exit(1);
-}
 
     const end = performance.now();
     const usage = process.resourceUsage();
@@ -102,7 +105,6 @@ async function run() {
     console.log('###METRICS###' + JSON.stringify(metrics) + '###');
     console.log('${successToken}');
     process.exit(0);
-}
 }
 
 run().catch(err => {

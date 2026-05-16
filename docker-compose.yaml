@@ -1,4 +1,20 @@
 services:
+    api:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: RCE_api
+        restart: always
+        ports:
+            - '3000:3000'
+        env_file:
+            - .env
+        depends_on:
+            - postgres
+            - redis
+        volumes:
+            - /run/user/1000/podman/podman.sock:/var/run/docker.sock
+
     postgres:
         image: postgres:18.1-alpine
         container_name: code_engine_db
@@ -7,10 +23,8 @@ services:
             - '5432:5432'
         volumes:
             - code_engine_data:/var/lib/postgresql
-        environment:
-            POSTGRES_USER: code_engine
-            POSTGRES_PASSWORD: code_engine_password
-            POSTGRES_DB: code_engine
+        env_file:
+            - .env
 
     redis:
         image: docker.io/library/redis:7.2

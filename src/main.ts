@@ -7,4 +7,7 @@ async function bootstrap() {
     app.use(cookieParser());
     await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
-bootstrap().catch(() => {});
+bootstrap().catch((err) => {
+    console.error('Application failed to start:', err);
+    process.exit(1);
+});
