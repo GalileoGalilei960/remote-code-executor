@@ -6,7 +6,7 @@ import { fromEvent, map, ReplaySubject } from 'rxjs';
 @Injectable()
 export class ContainersService {
     private docker = new Dockerode({
-        socketPath: '/run/user/1000/podman/podman.sock',
+        socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock',
     });
 
     async createContainer(containerImage: string, cmd: string[]) {
