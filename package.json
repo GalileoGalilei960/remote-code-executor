@@ -108,6 +108,17 @@
         }
     },
     "pnpm": {
+        "onlyBuiltDependencies": [
+            "@nestjs/core",
+            "@prisma/engines",
+            "bcrypt",
+            "cpu-features",
+            "msgpackr-extract",
+            "prisma",
+            "protobufjs",
+            "ssh2",
+            "unrs-resolver"
+        ],
         "overrides": {
             "hono": "^4.12.18",
             "lodash": "^4.17.24",
