@@ -4,8 +4,8 @@ WORKDIR /app
 
 RUN corepack enable pnpm
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --allow-scripts
+COPY package.json pnpm-lock.yaml .pnpmrc ./
+RUN pnpm install --frozen-lockfile
 
 COPY . . 
 
