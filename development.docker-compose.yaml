@@ -1,0 +1,26 @@
+services:
+    postgres:
+        image: postgres:18.1-alpine
+        container_name: code_engine_db
+        restart: always
+        ports:
+            - '5432:5432'
+        volumes:
+            - code_engine_data:/var/lib/postgresql
+        environment:
+            POSTGRES_USER: code_engine
+            POSTGRES_PASSWORD: code_engine_password
+            POSTGRES_DB: code_engine
+
+    redis:
+        image: docker.io/library/redis:7.2
+        container_name: redis-db
+        restart: always
+        ports:
+            - '6379:6379'
+        volumes:
+            - redis-data:/data
+
+volumes:
+    code_engine_data:
+    redis-data:

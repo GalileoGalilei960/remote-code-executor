@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "status_codes" ADD VALUE 'MEMORY_LIMIT_EXCEEDED';

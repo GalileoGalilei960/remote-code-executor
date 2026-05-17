@@ -18,7 +18,12 @@ import { SessionsModule } from './modules/sessions/sessions.module';
 @Module({
     imports: [
         ConfigModule.forRoot({
-            envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+            envFilePath:
+                process.env.NODE_ENV === 'test'
+                    ? '.env.test'
+                    : process.env.NODE_ENV === 'development'
+                      ? '.env.development'
+                      : '.env',
             isGlobal: true,
         }),
         BullModule.forRootAsync({
@@ -65,3 +70,5 @@ import { SessionsModule } from './modules/sessions/sessions.module';
     ],
 })
 export class AppModule {}
+
+console.log(process.env.NODE_ENV);
