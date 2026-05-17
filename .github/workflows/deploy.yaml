@@ -20,4 +20,4 @@ jobs:
                       podman compose down
                       git pull origin main
                       podman compose up --build --detach
-                      podman exec -it RCE_api pnpm dlx prisma migrate deploy
+                      podman exec -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 RCE_api pnpm dlx prisma migrate deploy
