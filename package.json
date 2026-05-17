@@ -30,6 +30,7 @@
         "@nestjs/passport": "^11.0.5",
         "@nestjs/platform-express": "^11.1.17",
         "@nestjs/platform-socket.io": "^11.1.18",
+        "@nestjs/swagger": "^11.4.3",
         "@nestjs/websockets": "^11.1.18",
         "@prisma/adapter-pg": "^7.5.0",
         "@prisma/client": "^7.5.0",
@@ -46,6 +47,7 @@
         "reflect-metadata": "^0.2.2",
         "rxjs": "^7.8.2",
         "socket.io": "^4.8.3",
+        "swagger-ui-express": "^5.0.1",
         "tar-stream": "^3.1.8",
         "ua-parser-js": "^2.0.9",
         "zod": "^4.3.6"

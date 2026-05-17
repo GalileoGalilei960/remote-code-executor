@@ -9,6 +9,7 @@ import {
     UnauthorizedException,
     UseGuards,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { SignInDto } from './dto/sign-in.dto';
@@ -16,10 +17,19 @@ import { Cookie } from './decorators/get-cookie.decorator';
 import type { Request, Response } from 'express';
 import { UAParser } from 'ua-parser-js';
 import { AccessTokenGuard } from './guards/auth.guard';
+import {
+    ApiSignUp,
+    ApiSignIn,
+    ApiSignOut,
+    ApiRefreshToken,
+} from './auth.swagger';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
+
+    @ApiSignUp()
     @Post('/signup')
     async signUp(
         @Body() createUserDto: CreateUserDto,
@@ -50,6 +60,7 @@ export class AuthController {
         return { accessToken };
     }
 
+    @ApiSignIn()
     @Post('/signin')
     async signIn(
         @Body() signInDto: SignInDto,
@@ -80,6 +91,7 @@ export class AuthController {
         return { accessToken };
     }
 
+    @ApiSignOut()
     @UseGuards(AccessTokenGuard)
     @Post('/signout')
     async signOut(
@@ -94,6 +106,7 @@ export class AuthController {
         res.clearCookie('refreshToken');
     }
 
+    @ApiRefreshToken()
     @Post('/refresh')
     async refresh(
         @Cookie('refreshToken') refreshToken: string,
