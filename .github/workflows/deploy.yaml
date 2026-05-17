@@ -1,0 +1,23 @@
+name: RCE engine deploy
+
+on:
+    push:
+        branches:
+            - main
+jobs:
+    deploy:
+        name: Deploy to production
+        runs-on: ubuntu-latest
+        steps:
+            - name: Execute SSH on VPS
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USER }}
+                  key: ${{ secrets.VPS_SSH }}
+                  script: |
+                      cd remote-code-executor
+                      podman compose down
+                      git pull origin main
+                      podman compose up --build --detach
+                      podman exec -it RCE_api pnpm dlx prisma migrate deploy
