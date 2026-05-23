@@ -17,7 +17,7 @@
         "test:watch": "jest --watch",
         "test:cov": "jest --coverage",
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-        "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock TESTCONTAINERS_RYUK_DISABLED=true jest --config ./test/jest-e2e.json"
+        "test:e2e": "NODE_OPTIONS='--experimental-vm-modules' DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock DOCKER_SOCKET_PATH=/run/user/$(id -u)/podman/podman.sock EXECUTION_WORKER_CONCURRENCY=1 TESTCONTAINERS_RYUK_DISABLED=true jest --config ./test/jest-e2e.json --runInBand"
     },
     "dependencies": {
         "@nestjs/bullmq": "^11.0.4",

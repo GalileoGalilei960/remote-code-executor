@@ -9,8 +9,17 @@ import { ContainersService } from '../containers/containers.service';
 import { Subscription } from 'rxjs';
 import { GetCodeParserFactory } from './code-parser/get-code-parser.factory';
 
+const executionWorkerConcurrency = Number.parseInt(
+    process.env.EXECUTION_WORKER_CONCURRENCY ?? '5',
+    10,
+);
+
 @Injectable()
-@Processor('execution', { concurrency: 5 })
+@Processor('execution', {
+    concurrency: Number.isNaN(executionWorkerConcurrency)
+        ? 5
+        : executionWorkerConcurrency,
+})
 export class ExecutionProcessor extends WorkerHost {
     constructor(
         private submissionsService: SubmissionsService,
@@ -41,14 +50,17 @@ export class ExecutionProcessor extends WorkerHost {
         let metrics: { time: number; memory: number } = { time: 0, memory: 0 };
         let successToken = '';
 
+        const submission = await this.submissionsService.findOne(
+            job.data.submissionId,
+        );
+
         try {
-            // Creating container
             containerId = await this.containersService.createContainer(
                 codeParser.getContainerImage(),
                 codeParser.getStartCMD(),
+                { memoryLimitMb: submission.task.memoryLimit },
             );
 
-            // Receiving logs from continer and sending them to the socket
             const [replayError, replayOutput] =
                 await this.containersService.getContainerLogs(containerId);
 
@@ -75,11 +87,6 @@ export class ExecutionProcessor extends WorkerHost {
                     };
                 }
             });
-
-            // Inserting archive
-            const submission = await this.submissionsService.findOne(
-                job.data.submissionId,
-            );
             const { code, key } = await codeParser.parseCode(
                 job.data.code,
                 submission.taskId,
@@ -100,18 +107,16 @@ export class ExecutionProcessor extends WorkerHost {
 
             const timeoutPromise = new Promise((_, reject) => {
                 timeout = setTimeout(() => {
-                    if (containerId)
-                        this.containersService
-
+                    if (containerId) {
+                        void this.containersService
                             .stopContainer(containerId)
-                            .then(() => {
-                                reject(new Error('TIME_LIMIT_EXCEEDED'));
-                            })
                             .catch((reason) => {
                                 console.log(
                                     `stopping container aborted because ${reason}`,
                                 );
                             });
+                    }
+                    reject(new Error('TIME_LIMIT_EXCEEDED'));
                 }, submission.task.timeLimit * 1000);
             });
 
@@ -159,9 +164,12 @@ export class ExecutionProcessor extends WorkerHost {
             // If we are here then the solution is wrong
             throw new Error('WRONG_ANSWER');
         } catch (err) {
+            const failureStatus = this.resolveFailedStatus(String(err));
+
             await this.submissionsService.update(job.data.submissionId, {
                 logs: errorLogs,
                 errorMessage: String(err),
+                status: failureStatus,
             });
 
             console.log('catched error', err);
@@ -200,16 +208,28 @@ export class ExecutionProcessor extends WorkerHost {
         console.log(`job ${job.id} is done!!!`);
     }
 
-    @OnWorkerEvent('failed')
-    async onFailed(job: Job) {
-        const submissionId = parseInt(job.id?.split('-')[1] ?? '0');
-        await this.submissionsService.update(submissionId, {
-            status:
-                status_codes[job.failedReason as status_codes] ||
-                status_codes.RUNTIME_ERROR,
-        });
-        // console.log('failed reason', job.failedReason, 'failed reason');
+    private resolveFailedStatus(failedReason: string | undefined): status_codes {
+        if (!failedReason) {
+            return status_codes.RUNTIME_ERROR;
+        }
 
+        const normalized = failedReason.replace(/^Error:\s*/, '');
+        if (normalized in status_codes) {
+            return status_codes[normalized as status_codes];
+        }
+
+        for (const code of Object.values(status_codes)) {
+            if (failedReason.includes(code)) {
+                return code;
+            }
+        }
+
+        return status_codes.RUNTIME_ERROR;
+    }
+
+    @OnWorkerEvent('failed')
+    onFailed(job: Job) {
+        // Status is set in process() catch; avoid overwriting with BullMQ failedReason here.
         console.log(`job ${job.id} was unlucky`);
     }
 }

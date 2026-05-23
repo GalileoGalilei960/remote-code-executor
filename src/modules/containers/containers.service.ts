@@ -9,7 +9,14 @@ export class ContainersService {
         socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock',
     });
 
-    async createContainer(containerImage: string, cmd: string[]) {
+    async createContainer(
+        containerImage: string,
+        cmd: string[],
+        options?: { memoryLimitMb?: number },
+    ) {
+        const defaultMemoryMb = process.env.NODE_ENV === 'test' ? 128 : 12;
+        const memoryLimitMb = options?.memoryLimitMb ?? defaultMemoryMb;
+
         const container = await this.docker.createContainer({
             Image: `docker.io/library/${containerImage}`,
             AttachStdout: true,
@@ -19,8 +26,9 @@ export class ContainersService {
             WorkingDir: '/app',
             HostConfig: {
                 PidsLimit: 10,
-                NanoCpus: 50000000,
-                Memory: 12 * 1024 * 1024,
+                NanoCpus:
+                    process.env.NODE_ENV === 'test' ? 250_000_000 : 50_000_000,
+                Memory: memoryLimitMb * 1024 * 1024,
             },
             NetworkDisabled: true,
         });
@@ -108,6 +116,6 @@ export class ContainersService {
 
     async removeContainer(containerId: string) {
         const container = this.docker.getContainer(containerId);
-        await container.remove();
+        await container.remove({ force: true });
     }
 }

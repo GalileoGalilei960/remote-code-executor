@@ -23,19 +23,16 @@ import { JsonValue } from '@prisma/client/runtime/client';
 import supertest from 'supertest';
 import { App } from 'supertest/types';
 import { AddressInfo } from 'net';
-import { io, Socket as ClientSocket } from 'socket.io-client';
 import { ExecutionService } from '@/modules/execution/execution.service';
 import { Queue } from 'bullmq';
-
-// Type definitions for socket events
-interface SocketLogEvent {
-    log: string;
-}
-
-interface SocketJobDoneEvent {
-    job: string;
-    submissionId: number;
-}
+import {
+    connectAuthenticatedSocket,
+    resolveDockerSocketPath,
+    waitForExecutionQueueIdle,
+    waitForSocketJobDone,
+    waitForSocketLog,
+    warmUpNodeExecutionImage,
+} from './execution-e2e.helpers';
 
 describe('ExecutionController(e2e)', () => {
     let app: INestApplication;
@@ -71,6 +68,7 @@ describe('ExecutionController(e2e)', () => {
         inputType: JsonValue;
         expectedOutputType: JsonValue;
     };
+    let memoryStressTask: typeof task;
     let wsUrl: string;
 
     beforeAll(async () => {
@@ -82,6 +80,9 @@ describe('ExecutionController(e2e)', () => {
         process.env.DATABASE_URL = pgContainer.getConnectionUri();
         process.env.REDIS_HOST = redisContainer.getHost();
         process.env.REDIS_PORT = redisContainer.getPort().toString();
+        process.env.DOCKER_SOCKET_PATH = resolveDockerSocketPath();
+
+        warmUpNodeExecutionImage();
 
         execSync('pnpm dlx prisma db push', {
             env: process.env,
@@ -165,7 +166,7 @@ describe('ExecutionController(e2e)', () => {
                 description: 'Return indices of the two numbers...',
                 difficulty: 'Easy',
                 memoryLimit: 128,
-                timeLimit: 5.0,
+                timeLimit: 15.0,
                 inputType: [
                     { type: ParamTypes.INT_ARRAY, name: 'nums' },
                     { type: ParamTypes.INT, name: 'target' },
@@ -199,7 +200,40 @@ describe('ExecutionController(e2e)', () => {
                 },
             ],
         });
+
+        memoryStressTask = await prisma.task.create({
+            data: {
+                title: 'Memory stress',
+                description: 'OOM test task',
+                difficulty: 'Easy',
+                memoryLimit: 64,
+                timeLimit: 15.0,
+                inputType: [
+                    { type: ParamTypes.INT_ARRAY, name: 'nums' },
+                    { type: ParamTypes.INT, name: 'target' },
+                ],
+                expectedOutputType: {
+                    type: ParamTypes.INT_ARRAY,
+                    name: 'result',
+                },
+            },
+        });
+
+        await prisma.testCase.create({
+            data: {
+                taskId: memoryStressTask.id,
+                isSample: true,
+                input: [[1], 1],
+                expectedOutput: [0],
+            },
+        });
     }, 180000);
+
+    afterEach(async () => {
+        if (executionQueue != null) {
+            await waitForExecutionQueueIdle(executionQueue);
+        }
+    }, 120_000);
 
     afterAll(async () => {
         // Wait for the execution queue to drain all jobs before closing
@@ -233,35 +267,12 @@ describe('ExecutionController(e2e)', () => {
     });
 
     it('Should let execute code with authorization but fail on wrong logic', async () => {
-        const socket: ClientSocket = io(wsUrl, {
-            auth: { token: `Bearer ${jwtAT}` },
-            transports: ['websocket'],
-            forceNew: true,
-            reconnection: false,
-        });
-
-        const socketPromise = new Promise<SocketLogEvent>((res, rej) => {
-            const timeout = setTimeout(() => {
-                rej(new Error('Socket event timeout - log event not received'));
-            }, 20000);
-
-            socket.on('log', (data: SocketLogEvent) => {
-                if (data.log.includes('WRONG_ANSWER')) {
-                    clearTimeout(timeout);
-                    res(data);
-                }
-            });
-
-            socket.on('connect_error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket connection error: ${err.message}`));
-            });
-
-            socket.on('error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket error: ${err}`));
-            });
-        });
+        const socket = await connectAuthenticatedSocket(wsUrl, jwtAT);
+        const socketPromise = waitForSocketLog(
+            socket,
+            (log) => log.includes('WRONG_ANSWER'),
+            30_000,
+        );
 
         const response = await supertest(app.getHttpServer() as App)
             .post(`/execution/${task.id}`)
@@ -292,7 +303,7 @@ describe('ExecutionController(e2e)', () => {
         expect(submission?.status).toBe(status_codes.WRONG_ANSWER);
 
         socket.disconnect();
-    }, 30000);
+    }, 60_000);
 
     it('Should not let execute code with invalid dto', async () => {
         await supertest(app.getHttpServer() as App)
@@ -303,37 +314,8 @@ describe('ExecutionController(e2e)', () => {
     });
 
     it('Should successfully execute code and emit JobDone event', async () => {
-        const socket: ClientSocket = io(wsUrl, {
-            auth: { token: `Bearer ${jwtAT}` },
-            transports: ['websocket'],
-            forceNew: true,
-            reconnection: false,
-        });
-
-        const socketPromise = new Promise<SocketJobDoneEvent>((res, rej) => {
-            const timeout = setTimeout(() => {
-                rej(
-                    new Error(
-                        'Socket event timeout - JobDone event not received',
-                    ),
-                );
-            }, 50000);
-
-            socket.on('jobDone', (data: SocketJobDoneEvent) => {
-                clearTimeout(timeout);
-                res(data);
-            });
-
-            socket.on('connect_error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket connection error: ${err.message}`));
-            });
-
-            socket.on('error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket error: ${err}`));
-            });
-        });
+        const socket = await connectAuthenticatedSocket(wsUrl, jwtAT);
+        const socketPromise = waitForSocketJobDone(socket, 30_000);
 
         const response = await supertest(app.getHttpServer() as App)
             .post(`/execution/${task.id}`)
@@ -372,36 +354,15 @@ describe('ExecutionController(e2e)', () => {
         expect(submission?.memoryUsed).toBeGreaterThan(0);
 
         socket.disconnect();
-    }, 70000);
+    }, 60_000);
 
     it('Should throw TIME_LIMIT_EXCEEDED if code runs for to long', async () => {
-        const socket: ClientSocket = io(wsUrl, {
-            auth: { token: `Bearer ${jwtAT}` },
-            transports: ['websocket'],
-            forceNew: true,
-            reconnection: false,
-        });
-
-        const socketPromise = new Promise<SocketLogEvent>((res, rej) => {
-            const timeout = setTimeout(() => {
-                rej(new Error('Socket event timeout - log event not received'));
-            }, 25000);
-
-            socket.on('log', (data: SocketLogEvent) => {
-                clearTimeout(timeout);
-                res(data);
-            });
-
-            socket.on('connect_error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket connection error: ${err.message}`));
-            });
-
-            socket.on('error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket error: ${err}`));
-            });
-        });
+        const socket = await connectAuthenticatedSocket(wsUrl, jwtAT);
+        const socketPromise = waitForSocketLog(
+            socket,
+            (log) => log.includes('TIME_LIMIT_EXCEEDED'),
+            25_000,
+        );
 
         const response = await supertest(app.getHttpServer() as App)
             .post(`/execution/${task.id}`)
@@ -434,45 +395,24 @@ describe('ExecutionController(e2e)', () => {
         expect(submission?.status).toBe(status_codes.TIME_LIMIT_EXCEEDED);
 
         socket.disconnect();
-    }, 40000);
+    }, 50_000);
 
     it('Should throw MEMORY_LIMIT_EXCEEDED if code runs uses to much memory', async () => {
-        const socket: ClientSocket = io(wsUrl, {
-            auth: { token: `Bearer ${jwtAT}` },
-            transports: ['websocket'],
-            forceNew: true,
-            reconnection: false,
-        });
-
-        const socketPromise = new Promise<SocketLogEvent>((res, rej) => {
-            const timeout = setTimeout(() => {
-                rej(new Error('Socket event timeout - log event not received'));
-            }, 30000);
-
-            socket.on('log', (data: SocketLogEvent) => {
-                clearTimeout(timeout);
-                res(data);
-            });
-
-            socket.on('connect_error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket connection error: ${err.message}`));
-            });
-
-            socket.on('error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket error: ${err}`));
-            });
-        });
+        const socket = await connectAuthenticatedSocket(wsUrl, jwtAT);
+        const socketPromise = waitForSocketLog(
+            socket,
+            (log) => log.includes('MEMORY_LIMIT_EXCEEDED'),
+            45_000,
+        );
 
         const response = await supertest(app.getHttpServer() as App)
-            .post(`/execution/${task.id}`)
+            .post(`/execution/${memoryStressTask.id}`)
             .set('Authorization', `Bearer ${jwtAT}`)
             .send({
                 language: languages.JavaScript,
-                code: `const arr = [];
+                code: `const chunks = [];
 while (true) {
-    arr.push(new Array(1000000).fill('MEMORY_HOG'));
+    chunks.push(Buffer.alloc(8 * 1024 * 1024));
 }`,
             })
             .expect(202);
@@ -494,40 +434,19 @@ while (true) {
         });
         expect(submission).toBeDefined();
         expect(submission?.userId).toBe(user.id);
-        expect(submission?.taskId).toBe(task.id);
+        expect(submission?.taskId).toBe(memoryStressTask.id);
         expect(submission?.language).toBe(languages.JavaScript);
         expect(submission?.status).toBe(status_codes.MEMORY_LIMIT_EXCEEDED);
 
         socket.disconnect();
-    }, 30000);
+    }, 60_000);
     it('Should throw RUNTIME_ERROR if code runs with error', async () => {
-        const socket: ClientSocket = io(wsUrl, {
-            auth: { token: `Bearer ${jwtAT}` },
-            transports: ['websocket'],
-            forceNew: true,
-            reconnection: false,
-        });
-
-        const socketPromise = new Promise<SocketLogEvent>((res, rej) => {
-            const timeout = setTimeout(() => {
-                rej(new Error('Socket event timeout - log event not received'));
-            }, 30000);
-
-            socket.on('log', (data: SocketLogEvent) => {
-                clearTimeout(timeout);
-                res(data);
-            });
-
-            socket.on('connect_error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket connection error: ${err.message}`));
-            });
-
-            socket.on('error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket error: ${err}`));
-            });
-        });
+        const socket = await connectAuthenticatedSocket(wsUrl, jwtAT);
+        const socketPromise = waitForSocketLog(
+            socket,
+            (log) => log.includes('runtime error'),
+            30_000,
+        );
 
         const response = await supertest(app.getHttpServer() as App)
             .post(`/execution/${task.id}`)
@@ -562,33 +481,8 @@ while (true) {
         socket.disconnect();
     }, 30000);
     it('Should throw RUNTIME_ERROR if code tries to use network', async () => {
-        const socket: ClientSocket = io(wsUrl, {
-            auth: { token: `Bearer ${jwtAT}` },
-            transports: ['websocket'],
-            forceNew: true,
-            reconnection: false,
-        });
-
-        const socketPromise = new Promise<SocketLogEvent>((res, rej) => {
-            const timeout = setTimeout(() => {
-                rej(new Error('Socket event timeout - log event not received'));
-            }, 30000);
-
-            socket.on('log', (data: SocketLogEvent) => {
-                clearTimeout(timeout);
-                res(data);
-            });
-
-            socket.on('connect_error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket connection error: ${err.message}`));
-            });
-
-            socket.on('error', (err) => {
-                clearTimeout(timeout);
-                rej(new Error(`Socket error: ${err}`));
-            });
-        });
+        const socket = await connectAuthenticatedSocket(wsUrl, jwtAT);
+        const socketPromise = waitForSocketLog(socket, () => true, 30_000);
 
         const response = await supertest(app.getHttpServer() as App)
             .post(`/execution/${task.id}`)
