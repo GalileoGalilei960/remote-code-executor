@@ -1,9 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import {
-    ApiOperation,
-    ApiResponse,
-    ApiParam,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
 export function ApiCreateSubmission() {
     return applyDecorators(
@@ -86,8 +82,7 @@ export function ApiUpdateSubmission() {
     return applyDecorators(
         ApiOperation({
             summary: 'Update Submission',
-            description:
-                'Update a code submission. Requires authentication.',
+            description: 'Update a code submission. Requires authentication.',
         }),
         ApiParam({
             name: 'id',
@@ -109,8 +104,7 @@ export function ApiDeleteSubmission() {
     return applyDecorators(
         ApiOperation({
             summary: 'Delete Submission',
-            description:
-                'Delete a code submission. Requires authentication.',
+            description: 'Delete a code submission. Requires authentication.',
         }),
         ApiParam({
             name: 'id',

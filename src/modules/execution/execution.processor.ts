@@ -208,7 +208,9 @@ export class ExecutionProcessor extends WorkerHost {
         console.log(`job ${job.id} is done!!!`);
     }
 
-    private resolveFailedStatus(failedReason: string | undefined): status_codes {
+    private resolveFailedStatus(
+        failedReason: string | undefined,
+    ): status_codes {
         if (!failedReason) {
             return status_codes.RUNTIME_ERROR;
         }

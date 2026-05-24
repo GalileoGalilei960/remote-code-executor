@@ -15,39 +15,132 @@ A NestJS backend for a coding-challenge platform: users authenticate, browse tas
 
 ## Architecture
 
+### System overview
+
+High-level view of the backend and its dependencies.
+
 ```mermaid
 flowchart LR
-    Client[Client / Frontend]
-    API[NestJS API]
+    Client[Client]
+
+    subgraph api [NestJS API]
+        REST[REST modules<br/>Auth · Tasks · Submissions · Execution]
+        Queue[BullMQ queue<br/>ExecutionService]
+        WS[Socket.IO gateway]
+        Worker[BullMQ worker<br/>ExecutionProcessor]
+    end
+
     PG[(PostgreSQL)]
     Redis[(Redis)]
-    Worker[BullMQ Worker]
-    Docker[Docker / Podman]
+    Engine[Docker / Podman]
 
-    Client -->|REST + JWT| API
-    Client -->|WebSocket| API
-    API --> PG
-    API --> Redis
-    Redis --> Worker
-    Worker --> Docker
+    Client -->|JWT REST| REST
+    Client <-->|JWT WebSocket| WS
+    REST --> PG
+    REST --> Queue
+    Queue --> Redis
+    Queue --> Worker
     Worker --> PG
+    Worker --> Engine
+    Worker --> WS
+    WS --> Client
 ```
 
-1. Client submits code via `POST /execution/:taskId` (creates a submission and enqueues a job).
-2. `ExecutionProcessor` spins up a language-specific container, injects a tar archive of user code + test harness, and collects stdout/stderr.
-3. Results update the submission; events push logs and completion to the user's Socket.IO room.
+### Submission and queue lifecycle
+
+What happens when a user submits code (HTTP request path only).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant EC as ExecutionController
+    participant SS as SubmissionsService
+    participant PG as PostgreSQL
+    participant ES as ExecutionService
+    participant R as Redis BullMQ
+
+    C->>EC: POST /execution/taskId
+    EC->>SS: create submission
+    SS->>PG: INSERT status PENDING
+    PG-->>SS: persisted row
+    SS-->>EC: submissionId
+    EC->>ES: createJob
+    ES->>R: add executionJob
+    R-->>ES: job metadata
+    ES-->>EC: job metadata
+    EC-->>C: 202 Accepted + job data
+    Note over R: Worker lifecycle picks up next
+```
+
+### Execution worker lifecycle
+
+What `ExecutionProcessor` does after BullMQ dequeues a job.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Q as BullMQ (Redis)
+    participant EP as ExecutionProcessor
+    participant CS as ContainersService
+    participant EE as EventEmitter (Socket)
+    participant DB as SubmissionsService (DB)
+
+    Q->>EP: process(job)
+    EP->>DB: findOne(submissionId)
+    Note right of EP: Loads dynamic timeLimit & memoryLimit
+
+    EP->>CS: createContainer(image, cmd, memoryLimitMb)
+    CS-->>EP: containerId
+    EP->>CS: getContainerLogs() & stream to EE
+    EP->>CS: putArchive(tar code)
+    EP->>CS: runContainer()
+
+    rect rgb(30, 30, 30)
+        Note right of EP: TRY BLOCK: Promise.race [Timeout vs Container Wait]
+
+        alt Success (Exit Code 0)
+            CS-->>EP: { StatusCode: 0 }
+            EP->>EE: emit('jobDone', metrics)
+            EP-->>Q: return metrics
+            Q->>EP: @OnWorkerEvent('completed')
+            EP->>DB: update(status: ACCEPTED)
+
+        else Container Error (Exit 137, 2, or 1)
+            CS-->>EP: { StatusCode: Non-Zero }
+            Note over EP: Throws Error (MLE, WRONG_ANSWER, RUNTIME)
+
+        else Time Limit Exceeded (Timeout wins)
+            EP->>CS: stopContainer() (with rejection handled)
+            Note over EP: Throws Error (TIME_LIMIT_EXCEEDED)
+        end
+    end
+
+    rect rgb(50, 20, 20)
+        Note right of EP: CATCH BLOCK: Handles all thrown exceptions
+        EP->>EP: resolveFailedStatus(err)
+        EP->>DB: update(status: resolvedStatus, logs, errorMessage)
+        EP->>EE: emit('log', err.message)
+        EP-->>Q: re-throw error to BullMQ
+        Q->>EP: @OnWorkerEvent('failed')
+        Note right of EP: Logs only - DB was already updated safely
+    end
+
+    Note over EP,CS: FINALLY BLOCK (Runs unconditionally)
+    EP->>CS: removeContainer(containerId)
+```
 
 ## Tech stack
 
-| Layer | Technology |
-| --- | --- |
-| Runtime | Node.js 22, TypeScript |
-| Framework | NestJS 11 |
-| Database | PostgreSQL 18, Prisma 7 |
-| Queue | Redis 7, BullMQ |
+| Layer      | Technology                          |
+| ---------- | ----------------------------------- |
+| Runtime    | Node.js 22, TypeScript              |
+| Framework  | NestJS 11                           |
+| Database   | PostgreSQL 18, Prisma 7             |
+| Queue      | Redis 7, BullMQ                     |
 | Containers | Dockerode (Docker or Podman socket) |
-| Real-time | Socket.IO |
-| API docs | Swagger / OpenAPI |
+| Real-time  | Socket.IO                           |
+| API docs   | Swagger / OpenAPI                   |
 
 ## Prerequisites
 
@@ -77,12 +170,12 @@ podman compose -f development.docker-compose.yaml up -d
 
 Default database credentials (from the compose file):
 
-| Variable | Value |
-| --- | --- |
-| User | `code_engine` |
+| Variable | Value                  |
+| -------- | ---------------------- |
+| User     | `code_engine`          |
 | Password | `code_engine_password` |
-| Database | `code_engine` |
-| Port | `5432` |
+| Database | `code_engine`          |
+| Port     | `5432`                 |
 
 Redis listens on `6379`.
 
@@ -90,11 +183,11 @@ Redis listens on `6379`.
 
 The app loads env files by `NODE_ENV`:
 
-| `NODE_ENV` | File |
-| --- | --- |
+| `NODE_ENV`    | File               |
+| ------------- | ------------------ |
 | `development` | `.env.development` |
-| `test` | `.env.test` |
-| otherwise | `.env` |
+| `test`        | `.env.test`        |
+| otherwise     | `.env`             |
 
 Create `.env.development` (and `.env` for production/Compose) with at least:
 
@@ -161,12 +254,12 @@ Adjust the socket volume in `docker-compose.yaml` if you use Podman on a differe
 
 ## Authentication
 
-| Endpoint | Description |
-| --- | --- |
-| `POST /auth/signup` | Register; returns access token, sets `refreshToken` cookie |
-| `POST /auth/signin` | Login |
-| `POST /auth/signout` | Logout (requires Bearer token) |
-| `POST /auth/refresh` | New access token from refresh cookie |
+| Endpoint             | Description                                                |
+| -------------------- | ---------------------------------------------------------- |
+| `POST /auth/signup`  | Register; returns access token, sets `refreshToken` cookie |
+| `POST /auth/signin`  | Login                                                      |
+| `POST /auth/signout` | Logout (requires Bearer token)                             |
+| `POST /auth/refresh` | New access token from refresh cookie                       |
 
 Protected REST routes expect:
 
@@ -191,10 +284,10 @@ Content-Type: application/json
 
 Connect to Socket.IO with the same JWT (Bearer in `Authorization` header or `auth.token` in the handshake). Events:
 
-| Event | Direction | Payload |
-| --- | --- | --- |
-| `log` | server → client | `{ log: string }` — streamed stdout/stderr |
-| `jobDone` | server → client | `{ job, submissionId }` — run finished |
+| Event     | Direction       | Payload                                    |
+| --------- | --------------- | ------------------------------------------ |
+| `log`     | server → client | `{ log: string }` — streamed stdout/stderr |
+| `jobDone` | server → client | `{ job, submissionId }` — run finished     |
 
 Rooms are keyed by user id (`sub` from the JWT).
 
@@ -202,10 +295,10 @@ Rooms are keyed by user id (`sub` from the JWT).
 
 The schema defines several languages; **execution parsers are implemented for:**
 
-| Language | Container image |
-| --- | --- |
-| JavaScript | `node:20-alpine` |
-| Python | `python:3.11-alpine` |
+| Language   | Container image      |
+| ---------- | -------------------- |
+| JavaScript | `node:20-alpine`     |
+| Python     | `python:3.11-alpine` |
 
 Other enum values currently fall back to the JavaScript parser until dedicated parsers are added.
 
@@ -261,13 +354,13 @@ prisma/
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `pnpm run start:dev` | Dev server with watch |
-| `pnpm run build` | Compile to `dist/` |
-| `pnpm run start:prod` | Run compiled app |
-| `pnpm run lint` | ESLint |
-| `pnpm run format` | Prettier |
+| Command               | Description           |
+| --------------------- | --------------------- |
+| `pnpm run start:dev`  | Dev server with watch |
+| `pnpm run build`      | Compile to `dist/`    |
+| `pnpm run start:prod` | Run compiled app      |
+| `pnpm run lint`       | ESLint                |
+| `pnpm run format`     | Prettier              |
 
 ## License
 
